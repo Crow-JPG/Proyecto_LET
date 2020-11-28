@@ -1,1 +1,1 @@
-Los datos ya venían en formato CSV y no faltaban datos por lo que la base procesada es la misma que la base sin procesar.
+En Datos_Actualizados1, simplemente eliminé la variable ID, y la variable lowbwt. La primera pues el ID no me interesa para mi estudio y me molesta al hacer regresiones. La segunda pues hay dos variables que me decían si es que el bebé tenía peso bajo al nacer, así que eliminé una y modifiqué la otra para que tenga valor numérico y sea más fácil de trabajar.
