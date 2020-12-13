@@ -1,24 +1,93 @@
 ---
-title: "Introducción"
+title: "Padres Fumadores y la Salud de sus Hijos"
 author: "Maximiliano Norbu"
 date: "09-11-2020"
-output: html_document
+output:
+  prettydoc::html_pretty:
+    highlight: tango
+    theme: tactile
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, echo=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(rio)
+library(dplyr)
+library(car)
+library(lmtest)
+library(ggplot2)
+library(GGally)
+library(gridExtra)
+library(MASS)
+library(leaps)
+library(glmnet)
+library(caret)
+library(gbm)
+library(knitr)
+library(yaml)
+library(remotes)
+library(lattice)    
+library(readxl)     
+library(DT) 
+library(tidyverse)
+
+Datos = read_csv("C:/Users/PC/Desktop/u/LET/proyecto_final/Base_de_datos_sin_procesar_excell.csv")
+Datos_A = Datos[,-17] #Datos_A serán mis datos modificados y aquí saco la variable ID pues no me importa identificar a los bebés en mi estudio, y puede dificultar hacer mis regresiones
+Datos_A = Datos_A[,-1]
+Datos_A = Datos_A[,-15]
+nombres = c("Circunferencia_Cabeza", "Largo", "Peso", "Gestación", "Madre_Fumadora", "Edad_Madre", "Cigarrillos_Madre", "Altura_Madre", "Peso_Madre", "Edad_Padre", "Años_Educación_Padre", "Cigarrillos_Padre", "Altura_Padre", "Peso_Bajo_Bebé")
+names(Datos_A) = nombres
+Datos_A2 = cbind(Datos_A[,1:14])
+Datos_A3 = Datos_A2[,-1]
+Datos_A3 = Datos_A3[,-1]
+Datos_A3 = Datos_A3[,-1]
 ```
 
 # Introducción
 
- Tanto el peso como la estatura de un bebé al nacer son factores importantes que indican si este está sano o no. Lo habitual para los bebés es pesar alrededor de 3.5 kg y medir alrededor de 50 cm al nacer (aunque los hombres suelen pesar y medir un poco más). Si el peso y/o altura del recién nacido se alejaran demasiado de las medidas standard, este puede ser más propenso a presentar problemas de salud. Es conocido que tanto características del padre, como de la madre pueden afectar a estas medidas. También es lógico pensar que las semanas de gestación que haya tenido el feto pueden tener efecto en el desarrollo que este presente al nacer. Sin embargo, también se dice mucho que ciertas acciones realizadas por la madre durante el embarazo pueden afectar la salud del infante. Estas pueden ir desde pintar la casa o estar mucho tiempo parada, hasta consumir drogas; que pueden ser legales como el café, el tabaco o el alcohol, o ilegales, como la marihuana o la heroína. Esto es importante, pues estas son actividades que se pueden evitar, con el objetivo de prevenir riesgos. 
+ Tanto el peso como la estatura de un bebé al nacer son factores importantes que indican si este está sano o no. Lo habitual para los bebés es pesar alrededor de 3.5 kg. y medir alrededor de 50 cm. al nacer (aunque los hombres suelen pesar y medir un poco más). Si el peso y/o altura del recién nacido se alejaran demasiado de las medidas estándar, este puede ser más propenso a presentar problemas de salud. Es un conocimiento relativamente común que tanto las características del padre, como de la madre pueden afectar a las del hijo. También es lógico pensar que las semanas de gestación que haya tenido el feto pueden tener efecto en el desarrollo que este presente al nacer. Sin embargo, también se dice mucho que ciertos actos de la madre durante el embarazo pueden afectar la salud del infante. Estas pueden ir desde pintar la casa o estar mucho tiempo parada, hasta consumir algún tipo de drogas, estas drogas pudiendo ser legales como el café, el tabaco o el alcohol, o ilegales, como la marihuana o la heroína. Identificar apropiadamente las actividades perjudiciales es de suma importancia, pues estas pueden ser evitadas para prevenir riesgos de salud en el recién nacido. 
 
- Ahora bien, estas son aseveraciones sin mucha profundidad. Al escuchar una frase como “no debes tomar alcohol durante el embarazo”, muchas cosas no quedan claras. Por ejemplo, si tomé un sorbo, ¿ya es suficiente para afectar al bebé?, ¿hay diferencia entre tomar un vaso de licor y, por ejemplo, tres vasos? No obstante, lo que más me llamó la atención fue el tema del tabaco, esto pues, es de las pocas sustancias que puede entrar a tu cuerpo sin que seas tú quien la está consumiendo (fumador pasivo).
+ Ahora bien, estas son aseveraciones sin mucha profundidad. Al escuchar una frase como “no debes tomar alcohol durante el embarazo”, se pueden presentar muchas dudas. Por ejemplo, si tomé un sorbo, ¿ya es suficiente para afectar al bebé?, ¿hay diferencia entre tomar un vaso de licor y, por ejemplo, tres vasos? No obstante, lo que más me llamó la atención fue el tema del tabaco, esto pues, es de las pocas sustancias que puede entrar al cuerpo de la madre sin que sea ella quien la está consumiendo (fumador pasivo).
 
- Por esto decidí investigar para responder la pregunta, ¿Cuánto afecta a la estatura y peso del recién nacido que el padre o la madre fumen durante el embarazo? Más específicamente, me gustaría encontrar una relación lineal entre la estatura del recién nacido y la cantidad de cigarrillos consumida (por la madre y luego por el padre), y después, una relación entre el peso y los cigarrillos. Me gustaría saber la diferencia que hay si alguno de los padres fumador y si ninguno fuma; además de la diferencia entre padre fumador y madre fumadora. Finalmente, me interesa la diferencia entre padres que fuman poco y padres que fuman mucho.
+ Por esto decidí investigar para responder la pregunta, ¿Cuánto afecta al peso del recién nacido que el padre o la madre fumen durante el embarazo? Más específicamente, me gustaría encontrar una relación lineal entre el peso del recién nacido y la cantidad de cigarrillos consumida (por la madre y luego por el padre). Me gustaría saber la diferencia que hay si alguno de los padres fumador y si ninguno fuma; además de la diferencia entre padre fumador y madre fumadora. Finalmente, me interesa la diferencia entre padres que fuman poco y padres que fuman mucho.
  
- Mi informe se organizará se la siguiente manera: primero se discutirá respecto a cuanto nos dice la estatura y peso del bebé respecto al riesgo de enfermedades. Esto pues, mi estudio busca ver cambios en el peligro de problemas a la salud del bebé respecto del uso del cigarrillo; sin embargo, las medidas utilizadas son medidas físicas (peso y altura) pues son más fáciles y objetivas de medir. Segundo, hablaré de las características de mi base de datos, de qué modificaciones le haré y como se obtuvo. Luego, para el fuerte del estudio, haré las distintas regresiones lineales y mostraré los modelos que obtenga a partir de estas, incluyendo tanto las fórmulas como algunos gráficos para facilitar la visualización de los resultados. Finalmente, concluiré a partir de lo que logre observar de los distintos modelos lineales.
+ Mi informe se organizará se la siguiente manera: primero se discutirá respecto a cuanto nos dice el peso del bebé respecto al riesgo de enfermedades. Esto pues, mi estudio busca ver cambios en el peligro de problemas a la salud del bebé respecto del uso del cigarrillo; sin embargo, la medida utilizadas es una medida físicas (peso) pues es más fácil y objetiva de medir. Segundo, hablaré de las características de mi base de datos, de qué modificaciones le haré y como se obtuvo. Luego, para el fuerte del estudio, haré las distintas regresiones lineales y mostraré los modelos que obtenga a partir de estas, incluyendo tanto las fórmulas como algunos gráficos para facilitar la visualización de los resultados. Finalmente, concluiré a partir de lo que logre observar de los distintos modelos lineales.
  
+ En la base de datos se presenta una variable llamada "LowBirthWeight" (o "bajo peso al nacer" en español), la cual es "low" si el peso del bebé es bajo y "normal" si es normal. Para mi estudio, por simplificación, utilizaré esta variable en las regresiones (y no el peso). La organización que obtuvo los datos determinó que un recién nacido presenta bajo peso si este es menor a 6 lb. (o 2,7 kg. aproximadamente). También consideraron que un alto peso no es un factor importante para determinar riesgo en la salud del infante, por lo que no hay una variable "alto peso al nacer". 
+ 
+ Lo primero que decidí hacer fue sacar las correlaciones de las distintas variables con mi variable de interés (que es "LowBirthWeight"), esto para ver qué característica es la que afecta más al bajo peso del bebé. Al hacerlo, obtuve esto:
+ 
+```{r, include=FALSE, echo=FALSE}
+cor(Datos_A2[,1:14])[14,]
+```
+Table: Correlaciones con la variable Peso Bajo Bebé
+
+|                     |Correlación |
+|:--------------------|-----------:|
+|Circunferencia_Cabeza|-0.50024673 |
+|Largo                |-0.59224820 |
+|Peso                 |-0.651804466|
+|Gestación            |-0.60293498 |
+|Madre_Fumadora       | 0.25301216 |
+|Edad_Madre           |-0.076393724|
+|Cigarrillos_Madre    | 0.035383657|
+|Altura_Madre         |-0.20080064 |
+|Peso_Madre           |-0.33887910 |
+|Edad_Padre           |-0.24509537 |
+|Años_Educación_Padre |-0.191273014|
+|Cigarrillos_Padre    | 0.26601285 |
+|Altura_Padre         | 0.107236268|
+|Peso_Bajo_Bebé       | 1.00000000 |
+
+Podemos ver que las únicas variables con correlación positiva son, Madre_Fumadora, Cigarrillos_Madre, Cigarrillos_Padre y Altura_Padre, que es, más o menos, lo que esperabamos. Estos resultados nos dicen, que, sea pequeña o no, hay una relación entre el bajo peso y los cigarrillos fumados por el padre y la madre del bebé durante el embarazo. 
+
+El siguiente paso lógico es ver qué tanto afectan estas variables a la salud del bebé, para esto haré unas cuantas regresiones lineales simples a través del comando "lm" de R.
+
+```{r, include=FALSE, echo=FALSE}
+regresion_fumadora = lm(Peso_Bajo_Bebé ~ Madre_Fumadora, data = Datos_A2)
+regresion_cigarrillos_madre = lm(Peso_Bajo_Bebé ~ Cigarrillos_Madre, data = Datos_A2)
+regresion_cigarrillos_padre = lm(Peso_Bajo_Bebé ~ Cigarrillos_Padre, data = Datos_A2)
+```
 
 ## links:
 
