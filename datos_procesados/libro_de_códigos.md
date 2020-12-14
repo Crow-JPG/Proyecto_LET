@@ -1,4 +1,7 @@
-`r library(readr)`
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+```
 
 | Nombre           | Tipo     | Explicación                                        | Medida   |
 |------------------|----------|----------------------------------------------------|----------|
