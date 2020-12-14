@@ -24,7 +24,7 @@ library(readr)
 
 ```{r}
 Datos = read_csv("C:/Users/PC/Desktop/u/LET/proyecto_final/Base_de_datos_sin_procesar_excell.csv")
-Datos_A = Datos[,-17] #Datos_A serán mis datos modificados y aquí saco la variable ID pues no me importa identificar a los bebés en mi estudio, y puede dificultar hacer mis regresiones
+Datos_A = Datos[,-17]
 Datos_A = Datos_A[,-1]
 Datos_A = Datos_A[,-15]
 nombres = c("Circunferencia_Cabeza", "Largo", "Peso", "Gestación", "Madre_Fumadora", "Edad_Madre", "Cigarrillos_Madre", "Altura_Madre", "Peso_Madre", "Edad_Padre", "Años_Educación_Padre", "Cigarrillos_Padre", "Altura_Padre", "Peso_Bajo_Bebé")
