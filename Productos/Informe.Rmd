@@ -1,0 +1,178 @@
+---
+title: "Padres Fumadores y la Salud de sus Hijos"
+author: "Maximiliano Norbu"
+date: "09-11-2020"
+output:
+  prettydoc::html_pretty:
+    highlight: tango
+    theme: tactile
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(rio)
+library(dplyr)
+library(car)
+library(lmtest)
+library(ggplot2)
+library(GGally)
+library(gridExtra)
+library(MASS)
+library(leaps)
+library(glmnet)
+library(caret)
+library(gbm)
+library(knitr)
+library(yaml)
+library(remotes)
+library(lattice)    
+library(readxl)     
+library(DT) 
+library(tidyverse)
+
+Datos = read_csv("C:/Users/PC/Desktop/u/LET/proyecto_final/Base_de_datos_sin_procesar_excell.csv")
+Datos_A = Datos[,-17] #Datos_A serán mis datos modificados y aquí saco la variable ID pues no me importa identificar a los bebés en mi estudio, y puede dificultar hacer mis regresiones
+Datos_A = Datos_A[,-1]
+Datos_A = Datos_A[,-15]
+nombres = c("Circunferencia_Cabeza", "Largo", "Peso", "Gestación", "Madre_Fumadora", "Edad_Madre", "Cigarrillos_Madre", "Altura_Madre", "Peso_Madre", "Edad_Padre", "Años_Educación_Padre", "Cigarrillos_Padre", "Altura_Padre", "Peso_Bajo_Bebé")
+names(Datos_A) = nombres
+Datos_A2 = cbind(Datos_A[,1:14])
+Datos_A3 = Datos_A2[,-1]
+Datos_A3 = Datos_A3[,-1]
+Datos_A3 = Datos_A3[,-1]
+Padre_Fumador = c()
+for (i in 1:length(Datos_A$Madre_Fumadora)){
+  if (Datos_A$Cigarrillos_Padre[i]== 0){Padre_Fumador[i] = 0}
+  if (Datos_A$Cigarrillos_Padre[i] > 0){Padre_Fumador[i] = 1}
+}
+nombre = "Padre_Fumador"
+names(Padre_Fumador) = nombre
+Datos_A3 = cbind(Datos_A3,Padre_Fumador)
+Max_Cigarrillos_Madre = max(Datos_A3$Cigarrillos_Madre)
+Datos_A3$Cigarrillos_Madre = Datos_A3$Cigarrillos_Madre/Max_Cigarrillos_Madre
+Max_Cigarrillos_Padre = max(Datos_A3$Cigarrillos_Padre)
+Datos_A3$Cigarrillos_Padre = Datos_A3$Cigarrillos_Padre/Max_Cigarrillos_Padre
+```
+
+# Introducción
+
+ Tanto el peso como la estatura de un bebé al nacer son factores importantes que indican si este está sano o no. Lo habitual para los bebés es pesar alrededor de 3.5 kg. y medir alrededor de 50 cm. al nacer (aunque los hombres suelen pesar y medir un poco más). Si el peso y/o altura del recién nacido se alejaran demasiado de las medidas estándar, este puede ser más propenso a presentar problemas de salud. Es un conocimiento relativamente común que tanto las características del padre, como de la madre pueden afectar a las del hijo. También es lógico pensar que las semanas de gestación que haya tenido el feto pueden tener efecto en el desarrollo que este presente al nacer. Sin embargo, también se dice mucho que ciertos actos de la madre durante el embarazo pueden afectar la salud del infante. Estas pueden ir desde pintar la casa o estar mucho tiempo parada, hasta consumir algún tipo de drogas, estas drogas pudiendo ser legales como el café, el tabaco o el alcohol, o ilegales, como la marihuana o la heroína. Identificar apropiadamente las actividades perjudiciales es de suma importancia, pues estas pueden ser evitadas para prevenir riesgos de salud en el recién nacido. 
+
+ Ahora bien, estas son aseveraciones sin mucha profundidad. Al escuchar una frase como “no debes tomar alcohol durante el embarazo”, se pueden presentar muchas dudas. Por ejemplo, si tomé un sorbo, ¿ya es suficiente para afectar al bebé?, ¿hay diferencia entre tomar un vaso de licor y, por ejemplo, tres vasos? No obstante, lo que más me llamó la atención fue el tema del tabaco, esto pues, es de las pocas sustancias que puede entrar al cuerpo de la madre sin que sea ella quien la está consumiendo (fumador pasivo).
+
+ Por esto decidí investigar para responder la pregunta, ¿Cuánto afecta al peso del recién nacido que el padre o la madre fumen durante el embarazo? Más específicamente, me gustaría encontrar una relación lineal entre el peso del recién nacido y la cantidad de cigarrillos consumida (por la madre y luego por el padre). Me gustaría saber la diferencia que hay si alguno de los padres fumador y si ninguno fuma; además de la diferencia entre padre fumador y madre fumadora. Finalmente, me interesa la diferencia entre padres que fuman poco y padres que fuman mucho.
+ 
+ Mi informe se organizará se la siguiente manera: primero se discutirá respecto a cuanto nos dice el peso del bebé respecto al riesgo de enfermedades. Esto pues, mi estudio busca ver cambios en el peligro de problemas a la salud del bebé respecto del uso del cigarrillo; sin embargo, la medida utilizadas es una medida físicas (peso) pues es más fácil y objetiva de medir. Segundo, hablaré de las características de mi base de datos, de qué modificaciones le haré y como se obtuvo. Luego, para el fuerte del estudio, haré las distintas regresiones lineales y mostraré los modelos que obtenga a partir de estas, incluyendo tanto las fórmulas como algunos gráficos para facilitar la visualización de los resultados. Finalmente, concluiré a partir de lo que logre observar de los distintos modelos lineales.
+ 
+ En la base de datos se presenta una variable llamada "Peso_Bajo_Bebé", la cual es "1" si el peso del bebé es bajo y "0" si es normal. Para mi estudio, por simplificación, utilizaré esta variable en las regresiones (y no el peso). La organización que obtuvo los datos determinó que un recién nacido presenta bajo peso si este es menor a 6 lb. (o 2,7 kg. aproximadamente). También consideraron que un alto peso no es un factor importante para determinar riesgo en la salud del infante, por lo que no hay una variable "alto peso al nacer". 
+ 
+ Lo primero que decidí hacer fue sacar las correlaciones de las distintas variables con mi variable de interés (que es "Peso_Bajo_Bebé"), esto para ver qué característica es la que afecta más al bajo peso del bebé. Al hacerlo, obtuve esto:
+ 
+```{r, include=FALSE, echo=FALSE}
+cor(Datos_A2[,1:14])[14,]
+```
+Table: Correlaciones con la variable Peso Bajo Bebé
+
+|                     |Correlación |
+|:--------------------|-----------:|
+|Circunferencia_Cabeza|-0.50024673 |
+|Largo                |-0.59224820 |
+|Peso                 |-0.651804466|
+|Gestación            |-0.60293498 |
+|Madre_Fumadora       | 0.25301216 |
+|Edad_Madre           |-0.076393724|
+|Cigarrillos_Madre    | 0.035383657|
+|Altura_Madre         |-0.20080064 |
+|Peso_Madre           |-0.33887910 |
+|Edad_Padre           |-0.24509537 |
+|Años_Educación_Padre |-0.191273014|
+|Cigarrillos_Padre    | 0.26601285 |
+|Altura_Padre         | 0.107236268|
+|Peso_Bajo_Bebé       | 1.00000000 |
+
+Podemos ver que las únicas variables con correlación positiva son, Madre_Fumadora, Cigarrillos_Madre, Cigarrillos_Padre y Altura_Padre, que es, más o menos, lo que esperabamos. Las primeras tres variables, son mis variables de interés, pues lo que a mí me interesa es ver como afecta el fumar al recién nacido. Los resultados obtenidos nos dicen que, sea pequeña o no, hay una relación entre el bajo peso y los cigarrillos fumados por el padre y la madre del bebé durante el embarazo. 
+
+El siguiente paso lógico es ver qué tanto afectan estas variables a la salud del bebé, para esto haré unas cuantas regresiones lineales simples a través del comando "lm" de R. Mi objetivo con estas regresiones no es predecir si el bebé nacerá con bajo peso, si no, comparar que tanto afectan mis tres variables de interés al status de "Bajo Peso" del bebé. Por esto, antes de realizar las regresiones, modifico las variables "Cigarrillos_Padre" y "Cigarrillos_Madre" pues las entradas de estas dos variables iban desde 0 hasta 50 y no saldría una buena comparación con la variable "Madre_Fumadora", pues esta última solo tiene entradas "0" y "1". Por esto, escalo la cantidad de cigarrillos desde 0 a 50, hasta 0 a 1. También, he agregado una variable "Padre_Fumador" que funciona igual que la variable "Madre_Fumadora", pero para el padre. Esto, para tener más variables para trabajar y comparar.
+
+```{r, include=FALSE, echo=FALSE}
+regresion_fumadora = lm(Peso_Bajo_Bebé ~ Madre_Fumadora - 1, data = Datos_A3)
+regresion_fumador = lm(Peso_Bajo_Bebé ~ Padre_Fumador - 1, data = Datos_A3)
+regresion_cigarrillos_madre = lm(Peso_Bajo_Bebé ~ Cigarrillos_Madre - 1, data = Datos_A3)
+regresion_cigarrillos_padre = lm(Peso_Bajo_Bebé ~ Cigarrillos_Padre - 1, data = Datos_A3)
+C1 = regresion_fumadora$coefficients[[1]]
+C2 = regresion_fumador$coefficients[[1]]
+C3 = regresion_cigarrillos_madre$coefficients[[1]]
+C4 = regresion_cigarrillos_padre$coefficients[[1]]
+```
+
+Table: Coeficientes de la Regresión Simple de distintas variables con Bajo_Peso_Bebé
+
+|                     |Coeficiente |
+|:--------------------|-----------:|
+|Madre_Fumadora       |`r C1`      |
+|Padre_Fumador        |`r C2`      |
+|Cigarrillos_Madre    |`r C3`      |
+|Cigarrillos_Padre    |`r C4`      |
+
+```{r, echo=FALSE}
+f1 = function(x){return(C1*x)}
+f2 = function(x){return(C2*x)}
+f3 = function(x){return(C3*x)}
+f4 = function(x){return(C4*x)}
+plot(f1,ylim = c(0,1), main = "Bajo Peso en Bebés respecto a mis variables de interés", ylab = "Índice Bajo Peso", xlab = "Coeficientes de las Distintas Variables", col = "red")
+curve(f2, col = "black", add = T)
+curve(f3, col = "brown", add = T)
+curve(f4, col = "cyan", add = T)
+legend(0, 1, legend=c("Madre Fumadora", "Padre Fumador", "Cigarrillos al día Madre", "Cigarrillos al día Padre"),
+       col=c("red","black", "brown", "cyan"), lty=1, cex=0.8)
+```
+
+ Notar que las regresiones las he hecho sin intercepto, esto, en un caso de querer predecir, le quitaría precisión a mi modelo. Sin embargo, como mi objetivo es comparar y no predecir, este formato me ayuda a observar mejor cuanto "peso" tiene cada variable de interés en el estado "Bajo_Peso". De la tabla y el gráfico podemos extraer bastante información.
+
+ Primero que nada, en el gráfico podemos notar que el coeficiente de Madre_Fumadora (linea roja) es mayor que el de Padre_Fumador (linea negra). Segundo, vemos que el coeficiente de Cigarrillos_Padre (linea cian) es mayor que el de Cigarrillos_Madre (linea café). Otra cosa que podemos apreciar es que Madre_Fumadora tiene un coeficiente menor que Cigarrillos_Madre. Para comparar mejor, podemos calcular que el de Madre_Fumadora, de hecho, es un `r regresion_fumadora$coefficients[[1]]/regresion_cigarrillos_madre$coefficients[[1]] * 100`% del coeficiente de Cigarrillos_Madre. Por último, el coeficiente de Padre_fumador es un `r regresion_fumador$coefficients[[1]]/regresion_cigarrillos_padre$coefficients[[1]] * 100`% del coeficiente de Cigarrillos_Padre.
+
+¿Qué puedo extraer de todo esto?
+
+De la primera información, extraemos que una madre fumadora tiene más efecto en si el niño estará bajo peso o no. Por otro lado, un cigarrillo extra al día, de un padre fumador, afecta más que un cigarrillo extra de una madre fumadora. De los dos porcentajes calculados, se puede decir que la diferencia que hace, en la condición de bajo peso del niño, una madre al fumar, es igual a la diferencia de que hace una madre que ya fuma al consumir `r regresion_fumadora$coefficients[[1]]/regresion_cigarrillos_madre$coefficients[[1]] * 50` cigarrillos adicionales al día. En el caso del padre, son `r regresion_fumador$coefficients[[1]]/regresion_cigarrillos_padre$coefficients[[1]] * 50` cigarrillos adicionales al día.
+
+Finalmente, realizaré unas regresiones múltiples. Las primeras tendrán el objetivo de ver si al estar presente tanto la característica de ser fumador, como la de cantidad de cigarrillos diarios, alguna de estas se ve opacada por la otra. Esto lo veríamos reflejado en un coeficiente muy pequeño en alguna de las dos variables. En ese caso, podría significar que una variable no es tan relevante con la otra presente.
+
+```{r}
+regresion_multiple_madre = lm(Peso_Bajo_Bebé ~ Madre_Fumadora + Cigarrillos_Madre - 1, data = Datos_A3)
+regresion_multiple_padre = lm(Peso_Bajo_Bebé ~ Padre_Fumador + Cigarrillos_Padre - 1, data = Datos_A3)
+regresion_multiple_todo =  lm(Peso_Bajo_Bebé ~ Madre_Fumadora + Cigarrillos_Madre + Padre_Fumador + Cigarrillos_Padre - 1, data = Datos_A3)
+regresion_multiple_madre$coefficients
+regresion_multiple_padre$coefficients
+regresion_multiple_todo$coefficients
+C51 = regresion_multiple_madre$coefficients[[1]]
+C52 = regresion_multiple_madre$coefficients[[2]]
+C61 = regresion_multiple_padre$coefficients[[1]]
+C62 = regresion_multiple_padre$coefficients[[2]]
+C71 = regresion_multiple_todo$coefficients[[1]]
+C72 = regresion_multiple_todo$coefficients[[2]]
+C73 = regresion_multiple_todo$coefficients[[3]]
+C74 = regresion_multiple_todo$coefficients[[4]]
+
+
+```
+Table: Coeficientes de los Modelos de Regresión Múltiple
+
+|                     |Madre_Fumadora|Cigarrillos_Madre|Padre_Fumador|Cigarrillos_Padre|
+|:--------------------|--------------|-----------------|-------------|----------------:|
+|Modelo 1             |`r C51`       |`r C52`          |             |                 |
+|Modelo 2             |              |                 |`r C61`      |`r C62`          |
+|Modelo 3             |`r C71`       |`r C72`          |`r C73`      |`r C74`          |
+
+
+## links:
+
+[Link 1](https://www.urmc.rochester.edu/encyclopedia/content.aspx?contenttypeid=90&contentid=P02673)
+
+[Link 2](https://www.uofmhealth.org/health-library/te6295#:~:text=The%20average%20birth%20weight%20for,usually%20lighter%20than%20later%20siblings.)
+
+[Link 3](https://www.cdc.gov/reproductivehealth/maternalinfanthealth/substance-abuse/substance-abuse-during-pregnancy.htm#:~:text=Smoking%20during%20pregnancy%20increases%20the,infant%20death%20syndrome%20(SIDS).)
+
+[Link 4](https://www.healthline.com/health/pregnancy/things-not-to-do-while-pregnant)
+
+[Link 5](https://en.wikipedia.org/wiki/Passive_smoking)
