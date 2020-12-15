@@ -1,7 +1,6 @@
 ---
 title: "Padres Fumadores y la Salud de sus Hijos"
 author: "Maximiliano Norbu"
-date: "09-11-2020"
 output:
   prettydoc::html_pretty:
     highlight: tango
